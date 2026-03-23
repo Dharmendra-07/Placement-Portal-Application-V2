@@ -17,10 +17,12 @@ const CompanyDrives   = () => import('../views/company/DrivesView.vue')
 const CompanyApplicants = () => import('../views/company/ApplicantsView.vue')
 const CompanyPlacements = () => import('../views/company/PlacementsView.vue')
 
-const StudentDashboard= () => import('../views/student/DashboardView.vue')
-const StudentDrives   = () => import('../views/student/DrivesView.vue')
-const StudentProfile  = () => import('../views/student/ProfileView.vue')
-const StudentHistory  = () => import('../views/student/HistoryView.vue')
+const StudentDashboard    = () => import('../views/student/DashboardView.vue')
+const StudentDrives       = () => import('../views/student/DrivesView.vue')
+const StudentApplications = () => import('../views/student/ApplicationsView.vue')
+const StudentInterviews   = () => import('../views/student/InterviewsView.vue')
+const StudentProfile      = () => import('../views/student/ProfileView.vue')
+const StudentPlacements   = () => import('../views/student/PlacementsView.vue')
 
 const routes = [
   { path: '/',        redirect: '/login' },
@@ -42,10 +44,12 @@ const routes = [
   { path: '/company/placements',          component: CompanyPlacements, meta: { role: 'company' } },
 
   // Student
-  { path: '/student/dashboard', component: StudentDashboard, meta: { role: 'student' } },
-  { path: '/student/drives',    component: StudentDrives,    meta: { role: 'student' } },
-  { path: '/student/profile',   component: StudentProfile,   meta: { role: 'student' } },
-  { path: '/student/history',   component: StudentHistory,   meta: { role: 'student' } },
+  { path: '/student/dashboard',    component: StudentDashboard,    meta: { role: 'student' } },
+  { path: '/student/drives',       component: StudentDrives,       meta: { role: 'student' } },
+  { path: '/student/applications', component: StudentApplications, meta: { role: 'student' } },
+  { path: '/student/interviews',   component: StudentInterviews,   meta: { role: 'student' } },
+  { path: '/student/placements',   component: StudentPlacements,   meta: { role: 'student' } },
+  { path: '/student/profile',      component: StudentProfile,      meta: { role: 'student' } },
 
   { path: '/:pathMatch(.*)*', redirect: '/login' },
 ]

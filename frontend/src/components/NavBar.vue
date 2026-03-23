@@ -50,7 +50,13 @@
             <router-link to="/student/drives" class="nav-link">Drives</router-link>
           </li>
           <li class="nav-item">
-            <router-link to="/student/history" class="nav-link">History</router-link>
+            <router-link to="/student/applications" class="nav-link">Applications</router-link>
+          </li>
+          <li class="nav-item">
+            <router-link to="/student/interviews" class="nav-link">Interviews</router-link>
+          </li>
+          <li class="nav-item">
+            <router-link to="/student/placements" class="nav-link">Placements</router-link>
           </li>
           <li class="nav-item">
             <router-link to="/student/profile" class="nav-link">Profile</router-link>

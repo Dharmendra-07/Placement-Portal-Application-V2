@@ -227,6 +227,7 @@ class Application(db.Model):
     interview_type  = db.Column(db.String(50))   # In-person / Virtual / Phone
     interview_date  = db.Column(db.DateTime)
     remarks         = db.Column(db.Text)
+    status_history  = db.Column(db.Text, default="[]")  # JSON list of status changes
 
     # Unique constraint: one application per student per drive
     __table_args__ = (
@@ -254,6 +255,7 @@ class Application(db.Model):
             "interview_type": self.interview_type,
             "interview_date": self.interview_date.isoformat() if self.interview_date else None,
             "remarks":        self.remarks,
+            "status_history": self.status_history,
         }
 
 

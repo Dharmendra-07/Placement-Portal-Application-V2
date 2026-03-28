@@ -11,6 +11,7 @@ const AdminCompanies  = () => import('../views/admin/CompaniesView.vue')
 const AdminStudents   = () => import('../views/admin/StudentsView.vue')
 const AdminDrives      = () => import('../views/admin/DrivesView.vue')
 const AdminApplications= () => import('../views/admin/ApplicationsView.vue')
+const AdminJobs        = () => import('../views/admin/JobsView.vue')
 
 const CompanyDashboard= () => import('../views/company/DashboardView.vue')
 const CompanyDrives   = () => import('../views/company/DrivesView.vue')
@@ -23,6 +24,7 @@ const StudentApplications = () => import('../views/student/ApplicationsView.vue'
 const StudentInterviews   = () => import('../views/student/InterviewsView.vue')
 const StudentProfile      = () => import('../views/student/ProfileView.vue')
 const StudentPlacements   = () => import('../views/student/PlacementsView.vue')
+const StudentHistory      = () => import('../views/student/HistoryView.vue')
 
 const routes = [
   { path: '/',        redirect: '/login' },
@@ -36,6 +38,7 @@ const routes = [
   { path: '/admin/students',   component: AdminStudents,   meta: { role: 'admin' } },
   { path: '/admin/drives',        component: AdminDrives,        meta: { role: 'admin' } },
   { path: '/admin/applications', component: AdminApplications,  meta: { role: 'admin' } },
+  { path: '/admin/jobs',         component: AdminJobs,          meta: { role: 'admin' } },
 
   // Company
   { path: '/company/dashboard',   component: CompanyDashboard,  meta: { role: 'company' } },
@@ -49,6 +52,7 @@ const routes = [
   { path: '/student/applications', component: StudentApplications, meta: { role: 'student' } },
   { path: '/student/interviews',   component: StudentInterviews,   meta: { role: 'student' } },
   { path: '/student/placements',   component: StudentPlacements,   meta: { role: 'student' } },
+  { path: '/student/history',       component: StudentHistory,       meta: { role: 'student' } },
   { path: '/student/profile',      component: StudentProfile,      meta: { role: 'student' } },
 
   { path: '/:pathMatch(.*)*', redirect: '/login' },

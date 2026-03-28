@@ -384,3 +384,60 @@ def get_placement_detail(placement_id):
     placement = Placement.query.filter_by(
         id=placement_id, student_id=student.id).first_or_404()
     return jsonify(placement.to_dict()), 200
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# HISTORY  — complete application + placement history
+# ══════════════════════════════════════════════════════════════════════════════
+
+@student_bp.route("/history", methods=["GET"])
+@jwt_required()
+@student_required
+def get_history():
+    """
+    Full placement history for the student:
+    every application with its full status timeline,
+    interview info, and placement confirmation if selected.
+    """
+    student, err = get_student()
+    if err:
+        return err
+
+    apps = (Application.query
+            .filter_by(student_id=student.id)
+            .order_by(Application.applied_at.desc()).all())
+
+    history = []
+    for a in apps:
+        entry = a.to_dict()
+        # Include full drive snapshot
+        if a.drive:
+            entry["drive"] = {
+                "id":                   a.drive.id,
+                "job_title":            a.drive.job_title,
+                "job_type":             a.drive.job_type,
+                "location":             a.drive.location,
+                "salary_min":           a.drive.salary_min,
+                "salary_max":           a.drive.salary_max,
+                "skills_required":      a.drive.skills_required,
+                "application_deadline": (a.drive.application_deadline.isoformat()
+                                         if a.drive.application_deadline else None),
+            }
+        # Include placement info if selected/placed
+        if a.placement:
+            entry["placement"] = a.placement.to_dict()
+        history.append(entry)
+
+    return jsonify({
+        "student": student.to_dict(),
+        "history": history,
+        "summary": {
+            "total":       len(apps),
+            "applied":     sum(1 for a in apps if a.status == "applied"),
+            "shortlisted": sum(1 for a in apps if a.status == "shortlisted"),
+            "interview":   sum(1 for a in apps if a.status == "interview"),
+            "offer":       sum(1 for a in apps if a.status == "offer"),
+            "placed":      sum(1 for a in apps if a.status in ("selected", "placed")),
+            "rejected":    sum(1 for a in apps if a.status == "rejected"),
+        },
+    }), 200

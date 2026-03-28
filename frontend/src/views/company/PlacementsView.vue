@@ -1,6 +1,9 @@
 <template>
   <div class="container-fluid py-4 px-4">
-    <h5 class="fw-bold mb-4">Selected Candidates</h5>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h5 class="fw-bold mb-0">Selected Candidates</h5>
+      <ExportButton role="company" />
+    </div>
 
     <div v-if="loading" class="text-center py-5">
       <div class="spinner-border text-primary"></div>
@@ -89,9 +92,11 @@
 
 <script>
 import api from '../../api'
+import ExportButton from '../../components/ExportButton.vue'
 
 export default {
   name: 'CompanyPlacementsView',
+  components: { ExportButton },
   data() {
     return {
       placements: [], loading: true,

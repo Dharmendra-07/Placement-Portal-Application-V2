@@ -36,3 +36,12 @@ class Config:
     # Upload folder
     UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), "uploads")
     MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5 MB
+    # Export folder
+    EXPORT_FOLDER = os.path.join(os.path.dirname(__file__), "exports")
+
+    # Google Chat webhook (optional)
+    GCHAT_WEBHOOK_URL = os.environ.get("GCHAT_WEBHOOK_URL", "")
+
+    # Celery beat db
+    CELERYBEAT_SCHEDULE_FILENAME = "celerybeat-schedule"
+

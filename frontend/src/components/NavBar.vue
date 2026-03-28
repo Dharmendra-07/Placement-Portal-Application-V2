@@ -26,6 +26,9 @@
           <li class="nav-item">
             <router-link to="/admin/applications" class="nav-link">Applications</router-link>
           </li>
+          <li class="nav-item">
+            <router-link to="/admin/jobs" class="nav-link">Jobs</router-link>
+          </li>
         </ul>
 
         <!-- Company links -->
@@ -57,6 +60,9 @@
           </li>
           <li class="nav-item">
             <router-link to="/student/placements" class="nav-link">Placements</router-link>
+          </li>
+          <li class="nav-item">
+            <router-link to="/student/history" class="nav-link">History</router-link>
           </li>
           <li class="nav-item">
             <router-link to="/student/profile" class="nav-link">Profile</router-link>

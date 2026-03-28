@@ -389,3 +389,38 @@ def global_search():
 def list_placements():
     placements = Placement.query.order_by(Placement.created_at.desc()).all()
     return jsonify([p.to_dict() for p in placements]), 200
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CROSS-ROLE: Admin views student profile + full history
+# ══════════════════════════════════════════════════════════════════════════════
+
+@admin_bp.route("/students/<int:student_id>/history", methods=["GET"])
+@jwt_required()
+@admin_required
+def student_history(student_id):
+    from models.models import Student, Application, Placement
+    student = Student.query.get_or_404(student_id)
+    apps    = (Application.query
+               .filter_by(student_id=student.id)
+               .order_by(Application.applied_at.desc()).all())
+    history = []
+    for a in apps:
+        entry = a.to_dict()
+        if a.drive:
+            entry["drive"] = a.drive.to_dict()
+        if a.placement:
+            entry["placement"] = a.placement.to_dict()
+        history.append(entry)
+
+    return jsonify({
+        "student": student.to_dict(),
+        "history": history,
+        "summary": {
+            "total":       len(apps),
+            "placed":      sum(1 for a in apps if a.status in ("selected", "placed")),
+            "rejected":    sum(1 for a in apps if a.status == "rejected"),
+            "shortlisted": sum(1 for a in apps if a.status == "shortlisted"),
+            "interview":   sum(1 for a in apps if a.status == "interview"),
+        },
+    }), 200

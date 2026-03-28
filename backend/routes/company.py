@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify, current_app
+import json
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 import os
@@ -294,7 +295,20 @@ def update_application_status(app_id):
     if new_status not in allowed:
         return jsonify({"message": f"Invalid status. Allowed: {allowed}"}), 400
 
-    app.status = new_status
+    # Record status change in history log
+    import json as _json
+    try:
+        history = _json.loads(app.status_history or "[]")
+    except Exception:
+        history = []
+    history.append({
+        "from":      app.status,
+        "to":        new_status,
+        "timestamp": datetime.utcnow().isoformat(),
+        "remarks":   data.get("remarks", ""),
+    })
+    app.status         = new_status
+    app.status_history = _json.dumps(history)
     if "remarks" in data:
         app.remarks = data["remarks"]
     if "interview_type" in data:
@@ -443,3 +457,41 @@ def update_placement(placement_id):
         "message":   "Placement updated",
         "placement": placement.to_dict()
     }), 200
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CROSS-ROLE: Company views student profile
+# ══════════════════════════════════════════════════════════════════════════════
+
+@company_bp.route("/students/<int:student_id>", methods=["GET"])
+@jwt_required()
+@company_required
+def view_student_profile(student_id):
+    """
+    Company can view a student's profile only if that student
+    has applied to one of their drives.
+    """
+    company, err = get_approved_company()
+    if err:
+        return err
+
+    from models.models import Student, Application
+    student = Student.query.get_or_404(student_id)
+
+    # Verify the student applied to one of this company's drives
+    drive_ids = [d.id for d in company.placement_drives]
+    applied   = Application.query.filter(
+        Application.student_id == student_id,
+        Application.drive_id.in_(drive_ids)
+    ).first() if drive_ids else None
+
+    if not applied:
+        return jsonify({"message": "Student has not applied to any of your drives"}), 403
+
+    data = student.to_dict()
+    # Include their application(s) to this company's drives only
+    data["applications"] = [
+        a.to_dict() for a in student.applications
+        if a.drive_id in drive_ids
+    ]
+    return jsonify(data), 200

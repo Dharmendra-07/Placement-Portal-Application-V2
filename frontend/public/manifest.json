@@ -1,0 +1,19 @@
+{
+  "name": "Placement Portal",
+  "short_name": "PPA",
+  "description": "Campus Placement Portal — manage drives, applications and placements.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0d6efd",
+  "orientation": "any",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "categories": ["education", "productivity"],
+  "shortcuts": [
+    { "name": "Dashboard", "url": "/student/dashboard", "description": "Go to dashboard" },
+    { "name": "Browse Drives", "url": "/student/drives",    "description": "Browse placement drives" }
+  ]
+}

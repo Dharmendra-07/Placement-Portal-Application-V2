@@ -7,6 +7,7 @@ from app import db
 from models.models import (Company, PlacementDrive, Application, Placement, User,
                             ApprovalStatus, DriveStatus, ApplicationStatus)
 from utils.decorators import company_required, not_blacklisted
+from utils.cache import cached_response, invalidate, TTL
 
 company_bp = Blueprint("company", __name__)
 
@@ -65,6 +66,7 @@ def update_profile():
 @company_bp.route("/dashboard", methods=["GET"])
 @jwt_required()
 @company_required
+@cached_response("company:dashboard", ttl=TTL["short"], vary_on_query=False)
 def dashboard():
     company, err = get_approved_company()
     if err:
@@ -119,6 +121,7 @@ def dashboard():
 @company_bp.route("/drives", methods=["GET"])
 @jwt_required()
 @company_required
+@cached_response("company:drives", ttl=TTL["medium"], vary_on_query=True)
 def list_drives():
     company, err = get_approved_company()
     if err:
@@ -184,6 +187,7 @@ def create_drive():
     )
     db.session.add(drive)
     db.session.commit()
+    invalidate("company:drives:*", "company:dashboard:*", "admin:drives:*")
     return jsonify({
         "message": "Drive submitted for admin approval",
         "drive":   drive.to_dict()
@@ -214,6 +218,7 @@ def update_drive(drive_id):
         drive.drive_date = datetime.fromisoformat(data["drive_date"])
 
     db.session.commit()
+    invalidate("company:drives:*", "company:dashboard:*", "drives:approved:*")
     return jsonify({"message": "Drive updated", "drive": drive.to_dict()}), 200
 
 
@@ -228,6 +233,7 @@ def close_drive(drive_id):
         id=drive_id, company_id=company.id).first_or_404()
     drive.status = DriveStatus.CLOSED
     db.session.commit()
+    invalidate("company:drives:*", "company:dashboard:*", "drives:approved:*", "admin:drives:*")
     return jsonify({"message": "Drive closed", "drive": drive.to_dict()}), 200
 
 
@@ -330,6 +336,7 @@ def update_application_status(app_id):
             db.session.add(placement)
 
     db.session.commit()
+    invalidate("company:dashboard:*", "admin:dashboard")
     return jsonify({
         "message":     "Application updated",
         "application": app.to_dict()

@@ -4,6 +4,7 @@ from app import db
 from models.models import (User, Company, Student, PlacementDrive, Application,
                             Placement, Role, ApprovalStatus, DriveStatus, ApplicationStatus)
 from utils.decorators import admin_required
+from utils.cache import cached_response, invalidate, cache_stats, TTL
 
 admin_bp = Blueprint("admin", __name__)
 
@@ -14,6 +15,7 @@ admin_bp = Blueprint("admin", __name__)
 @jwt_required()
 @admin_required
 def dashboard():
+    # ← cached 60s — stats invalidated on any approval/rejection
     total_students        = Student.query.count()
     total_companies       = Company.query.filter_by(approval_status=ApprovalStatus.APPROVED).count()
     total_drives          = PlacementDrive.query.count()
@@ -60,7 +62,9 @@ def dashboard():
 @admin_bp.route("/companies", methods=["GET"])
 @jwt_required()
 @admin_required
+@cached_response("admin:companies", ttl=TTL["medium"], vary_on_query=True)
 def list_companies():
+    # cached per query-string combination
     status   = request.args.get("status")
     q        = request.args.get("q", "").strip()
     industry = request.args.get("industry", "").strip()
@@ -108,6 +112,7 @@ def approve_company(company_id):
     company = Company.query.get_or_404(company_id)
     company.approval_status = ApprovalStatus.APPROVED
     db.session.commit()
+    invalidate("admin:companies:*", "admin:dashboard")
     return jsonify({"message": "Company approved", "company": company.to_dict()}), 200
 
 
@@ -118,6 +123,7 @@ def reject_company(company_id):
     company = Company.query.get_or_404(company_id)
     company.approval_status = ApprovalStatus.REJECTED
     db.session.commit()
+    invalidate("admin:companies:*", "admin:dashboard")
     return jsonify({"message": "Company rejected", "company": company.to_dict()}), 200
 
 
@@ -162,6 +168,7 @@ def delete_company(company_id):
 @admin_bp.route("/students", methods=["GET"])
 @jwt_required()
 @admin_required
+@cached_response("admin:students", ttl=TTL["medium"], vary_on_query=True)
 def list_students():
     q          = request.args.get("q", "").strip()
     department = request.args.get("department", "").strip()
@@ -250,6 +257,7 @@ def delete_student(student_id):
 @admin_bp.route("/drives", methods=["GET"])
 @jwt_required()
 @admin_required
+@cached_response("admin:drives", ttl=TTL["medium"], vary_on_query=True)
 def list_drives():
     status     = request.args.get("status")
     company_id = request.args.get("company_id")
@@ -294,6 +302,7 @@ def approve_drive(drive_id):
     drive = PlacementDrive.query.get_or_404(drive_id)
     drive.status = DriveStatus.APPROVED
     db.session.commit()
+    invalidate("admin:drives:*", "drives:approved:*", "admin:dashboard")
     return jsonify({"message": "Drive approved", "drive": drive.to_dict()}), 200
 
 
@@ -304,6 +313,7 @@ def reject_drive(drive_id):
     drive = PlacementDrive.query.get_or_404(drive_id)
     drive.status = DriveStatus.CLOSED
     db.session.commit()
+    invalidate("admin:drives:*", "drives:approved:*", "admin:dashboard")
     return jsonify({"message": "Drive rejected"}), 200
 
 
@@ -424,3 +434,36 @@ def student_history(student_id):
             "interview":   sum(1 for a in apps if a.status == "interview"),
         },
     }), 200
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CACHE HEALTH + MANUAL FLUSH
+# ══════════════════════════════════════════════════════════════════════════════
+
+@admin_bp.route("/cache/stats", methods=["GET"])
+@jwt_required()
+@admin_required
+def get_cache_stats():
+    """Returns Redis memory usage and key count."""
+    return jsonify(cache_stats()), 200
+
+
+@admin_bp.route("/cache/flush", methods=["DELETE"])
+@jwt_required()
+@admin_required
+def flush_cache():
+    """Flush ALL PPA cache keys (use sparingly)."""
+    invalidate("*")
+    return jsonify({"message": "Cache flushed"}), 200
+
+
+@admin_bp.route("/cache/flush/<pattern>", methods=["DELETE"])
+@jwt_required()
+@admin_required
+def flush_cache_pattern(pattern):
+    """Flush keys matching a specific pattern e.g. 'drives:*'."""
+    import re
+    if not re.match(r'^[\w:\*]+$', pattern):
+        return jsonify({"message": "Invalid pattern"}), 400
+    invalidate(pattern)
+    return jsonify({"message": f"Cache flushed for pattern: {pattern}"}), 200

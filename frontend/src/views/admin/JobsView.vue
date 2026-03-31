@@ -72,6 +72,64 @@
         </div>
       </div>
 
+
+      <!-- Redis Cache Panel -->
+      <div class="col-12">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white fw-semibold
+                      d-flex justify-content-between align-items-center">
+            Redis Cache
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-outline-secondary"
+                      @click="fetchCacheStats">Refresh Stats</button>
+              <button class="btn btn-sm btn-outline-danger"
+                      @click="flushCache('*')">Flush All</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div v-if="!cacheStats" class="text-muted small">
+              Click "Refresh Stats" to load Redis info.
+            </div>
+            <div v-else-if="!cacheStats.available" class="text-warning small">
+              Redis is unavailable — caching is disabled.
+            </div>
+            <div v-else>
+              <div class="row g-3 mb-3">
+                <div class="col-md-3 text-center">
+                  <div class="fs-3 fw-bold text-primary">
+                    {{ cacheStats.total_keys }}
+                  </div>
+                  <div class="text-muted small">Cached keys</div>
+                </div>
+                <div class="col-md-3 text-center">
+                  <div class="fs-3 fw-bold text-info">
+                    {{ cacheStats.used_memory_mb }} MB
+                  </div>
+                  <div class="text-muted small">Memory used</div>
+                </div>
+                <div class="col-md-3 text-center">
+                  <div class="fs-3 fw-bold text-secondary">
+                    {{ cacheStats.peak_memory_mb }} MB
+                  </div>
+                  <div class="text-muted small">Peak memory</div>
+                </div>
+                <div class="col-md-3 text-center align-self-center">
+                  <span class="badge bg-success">Redis connected</span>
+                </div>
+              </div>
+
+              <div class="d-flex gap-2 flex-wrap">
+                <button v-for="pattern in cachePatterns" :key="pattern.key"
+                        class="btn btn-sm btn-outline-secondary"
+                        @click="flushCache(pattern.key)">
+                  Flush {{ pattern.label }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Job status log -->
       <div class="col-12" v-if="log.length">
         <div class="card border-0 shadow-sm">
@@ -126,6 +184,14 @@ export default {
       reportDownload: null,
       log:            [],
       pollTimers:     {},
+      cacheStats:     null,
+      cachePatterns: [
+        { key: 'drives:*',           label: 'Drives'     },
+        { key: 'admin:companies:*',  label: 'Companies'  },
+        { key: 'admin:students:*',   label: 'Students'   },
+        { key: 'admin:dashboard',    label: 'Dashboard'  },
+        { key: 'company:*',          label: 'Company'    },
+      ],
     }
   },
   beforeUnmount() {
@@ -191,6 +257,38 @@ export default {
           status: 'FAILURE',
           detail: this[resultKey],
           time:   new Date().toLocaleTimeString('en-IN'),
+        })
+      }
+    },
+
+    async fetchCacheStats() {
+      try {
+        const { data } = await api.get('/admin/cache/stats')
+        this.cacheStats = data
+      } catch {
+        this.cacheStats = { available: false }
+      }
+    },
+
+    async flushCache(pattern) {
+      const label = pattern === '*' ? 'ALL cache' : `cache pattern "${pattern}"`
+      if (!confirm(`Flush ${label}? This will slow down next requests temporarily.`)) return
+      try {
+        if (pattern === '*') {
+          await api.delete('/admin/cache/flush')
+        } else {
+          await api.delete(`/admin/cache/flush/${encodeURIComponent(pattern)}`)
+        }
+        this.log.unshift({
+          job: `Cache flush (${pattern})`, status: 'SUCCESS',
+          detail: 'Keys removed', time: new Date().toLocaleTimeString('en-IN'),
+        })
+        await this.fetchCacheStats()
+      } catch (err) {
+        this.log.unshift({
+          job: `Cache flush (${pattern})`, status: 'FAILURE',
+          detail: err.response?.data?.message || 'Failed',
+          time: new Date().toLocaleTimeString('en-IN'),
         })
       }
     },

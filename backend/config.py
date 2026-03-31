@@ -44,4 +44,9 @@ class Config:
 
     # Celery beat db
     CELERYBEAT_SCHEDULE_FILENAME = "celerybeat-schedule"
+    # Flask-Caching (via Redis)
+    CACHE_TYPE              = "RedisCache"
+    CACHE_REDIS_URL         = REDIS_URL
+    CACHE_DEFAULT_TIMEOUT   = 300   # 5 min default
+    CACHE_KEY_PREFIX        = "ppa:"
 

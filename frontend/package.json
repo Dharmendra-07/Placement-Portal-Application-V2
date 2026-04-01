@@ -13,7 +13,8 @@
     "vuex":        "^4.1.0",
     "axios":       "^1.7.0",
     "bootstrap":           "^5.3.3",
-    "bootstrap-icons":      "^1.11.3"
+    "bootstrap-icons":      "^1.11.3",
+    "chart.js":             "^4.4.3"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.0",

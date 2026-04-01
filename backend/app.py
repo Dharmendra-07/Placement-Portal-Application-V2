@@ -31,13 +31,16 @@ def create_app(config_class=Config):
     from routes.admin   import admin_bp
     from routes.company import company_bp
     from routes.student import student_bp
-    from routes.jobs    import jobs_bp
+    from routes.jobs       import jobs_bp
+    from routes.analytics  import analytics_bp
 
     app.register_blueprint(auth_bp,    url_prefix="/api/auth")
     app.register_blueprint(admin_bp,   url_prefix="/api/admin")
     app.register_blueprint(company_bp, url_prefix="/api/company")
     app.register_blueprint(student_bp, url_prefix="/api/student")
-    app.register_blueprint(jobs_bp,    url_prefix="/api/jobs")
+    app.register_blueprint(jobs_bp,      url_prefix="/api/jobs")
+    app.register_blueprint(analytics_bp, url_prefix="/api/analytics")
+    app.register_blueprint(ats_bp,        url_prefix="/api/ats")
 
     # Attach celery's Flask context
     from celery_app import make_celery

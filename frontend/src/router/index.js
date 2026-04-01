@@ -2,6 +2,14 @@ import { createRouter, createWebHistory } from 'vue-router'
 import store from '../store'
 
 // Lazy-loaded views
+const Landing          = () => import('../views/LandingView.vue')
+const ATS              = () => import('../views/ATSView.vue')
+const AdminAnalytics   = () => import('../views/admin/AnalyticsView.vue')
+const CompanyAnalytics = () => import('../views/company/AnalyticsView.vue')
+const StudentAnalytics = () => import('../views/student/AnalyticsView.vue')
+const Landing         = () => import('../views/LandingView.vue')
+const Analytics       = () => import('../views/shared/AnalyticsView.vue')
+const ATS             = () => import('../views/shared/ATSView.vue')
 const Login          = () => import('../views/LoginView.vue')
 const RegisterStudent= () => import('../views/RegisterStudentView.vue')
 const RegisterCompany= () => import('../views/RegisterCompanyView.vue')
@@ -27,7 +35,8 @@ const StudentPlacements   = () => import('../views/student/PlacementsView.vue')
 const StudentHistory      = () => import('../views/student/HistoryView.vue')
 
 const routes = [
-  { path: '/',        redirect: '/login' },
+  { path: '/landing', component: Landing, meta: { guest: false, public: true } },
+  { path: '/',        redirect: '/landing' },
   { path: '/login',   component: Login,           meta: { guest: true } },
   { path: '/register/student', component: RegisterStudent, meta: { guest: true } },
   { path: '/register/company', component: RegisterCompany, meta: { guest: true } },
@@ -39,12 +48,14 @@ const routes = [
   { path: '/admin/drives',        component: AdminDrives,        meta: { role: 'admin' } },
   { path: '/admin/applications', component: AdminApplications,  meta: { role: 'admin' } },
   { path: '/admin/jobs',         component: AdminJobs,          meta: { role: 'admin' } },
+  { path: '/admin/analytics',    component: AdminAnalytics,     meta: { role: 'admin' } },
 
   // Company
   { path: '/company/dashboard',   component: CompanyDashboard,  meta: { role: 'company' } },
   { path: '/company/drives',      component: CompanyDrives,     meta: { role: 'company' } },
   { path: '/company/applicants/:driveId', component: CompanyApplicants, meta: { role: 'company' } },
-  { path: '/company/placements',          component: CompanyPlacements, meta: { role: 'company' } },
+  { path: '/company/placements',          component: CompanyPlacements,  meta: { role: 'company' } },
+  { path: '/company/analytics',            component: CompanyAnalytics,   meta: { role: 'company' } },
 
   // Student
   { path: '/student/dashboard',    component: StudentDashboard,    meta: { role: 'student' } },
@@ -54,8 +65,15 @@ const routes = [
   { path: '/student/placements',   component: StudentPlacements,   meta: { role: 'student' } },
   { path: '/student/history',       component: StudentHistory,       meta: { role: 'student' } },
   { path: '/student/profile',      component: StudentProfile,      meta: { role: 'student' } },
+  { path: '/student/analytics',     component: StudentAnalytics,    meta: { role: 'student' } },
 
-  { path: '/:pathMatch(.*)*', redirect: '/login' },
+  { path: '/admin/analytics',   component: Analytics, meta: { role: 'admin'   } },
+  { path: '/company/analytics', component: Analytics, meta: { role: 'company' } },
+  { path: '/student/analytics', component: Analytics, meta: { role: 'student' } },
+  { path: '/admin/ats',         component: ATS,       meta: { role: 'admin'   } },
+  { path: '/company/ats',       component: ATS,       meta: { role: 'company' } },
+  { path: '/student/ats',       component: ATS,       meta: { role: 'student' } },
+  { path: '/:pathMatch(.*)*', redirect: '/landing' },
 ]
 
 const router = createRouter({
@@ -68,8 +86,10 @@ router.beforeEach((to, _from, next) => {
   const isAuth = store.getters.isAuthenticated
   const role   = store.getters.role
 
+  if (to.meta.public) return next()
+  if (to.meta.public) return next()
+
   if (to.meta.guest) {
-    // Redirect already-logged-in users to their dashboard
     if (isAuth) return next(`/${role}/dashboard`)
     return next()
   }

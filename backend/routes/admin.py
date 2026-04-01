@@ -467,3 +467,190 @@ def flush_cache_pattern(pattern):
         return jsonify({"message": "Invalid pattern"}), 400
     invalidate(pattern)
     return jsonify({"message": f"Cache flushed for pattern: {pattern}"}), 200
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ANALYTICS  — Chart.js data endpoints
+# ══════════════════════════════════════════════════════════════════════════════
+
+@admin_bp.route("/analytics", methods=["GET"])
+@jwt_required()
+@admin_required
+@cached_response("admin:analytics", ttl=TTL["short"])
+def get_analytics():
+    """
+    Returns aggregated data for all Chart.js dashboards.
+    All data is scoped to the last 6 months unless ?months=N is passed.
+    """
+    from models.models import (PlacementDrive, Application, Placement,
+                                Company, Student, DriveStatus, ApplicationStatus)
+    from sqlalchemy import func
+    from datetime import datetime, timedelta
+    import json
+
+    months     = min(int(request.args.get("months", 6)), 12)
+    since      = datetime.utcnow() - timedelta(days=months * 30)
+
+    # ── 1. Application funnel (all time) ──────────────────────────────────────
+    funnel_counts = {}
+    for s in [ApplicationStatus.APPLIED, ApplicationStatus.SHORTLISTED,
+              ApplicationStatus.INTERVIEW, ApplicationStatus.OFFER,
+              ApplicationStatus.SELECTED, "placed", ApplicationStatus.REJECTED]:
+        funnel_counts[s] = Application.query.filter_by(status=s).count()
+
+    funnel = {
+        "labels": ["Applied", "Shortlisted", "Interview", "Offer", "Selected/Placed", "Rejected"],
+        "data":   [
+            funnel_counts.get(ApplicationStatus.APPLIED,     0),
+            funnel_counts.get(ApplicationStatus.SHORTLISTED, 0),
+            funnel_counts.get(ApplicationStatus.INTERVIEW,   0),
+            funnel_counts.get(ApplicationStatus.OFFER,       0),
+            funnel_counts.get(ApplicationStatus.SELECTED,    0) +
+                funnel_counts.get("placed",                  0),
+            funnel_counts.get(ApplicationStatus.REJECTED,    0),
+        ],
+    }
+
+    # ── 2. Monthly placements trend ───────────────────────────────────────────
+    from calendar import month_abbr
+    monthly_labels = []
+    monthly_apps   = []
+    monthly_placed = []
+
+    now = datetime.utcnow()
+    for i in range(months - 1, -1, -1):
+        # start of that month
+        target = now.replace(day=1) - timedelta(days=i * 30)
+        target = target.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        if target.month == 12:
+            next_m = target.replace(year=target.year + 1, month=1)
+        else:
+            next_m = target.replace(month=target.month + 1)
+
+        apps_cnt = Application.query.filter(
+            Application.applied_at >= target,
+            Application.applied_at < next_m
+        ).count()
+
+        placed_cnt = Application.query.filter(
+            Application.applied_at >= target,
+            Application.applied_at < next_m,
+            Application.status.in_([ApplicationStatus.SELECTED, "placed"])
+        ).count()
+
+        monthly_labels.append(f"{month_abbr[target.month]} {target.year}")
+        monthly_apps.append(apps_cnt)
+        monthly_placed.append(placed_cnt)
+
+    monthly_trend = {
+        "labels":  monthly_labels,
+        "datasets": [
+            {"label": "Applications", "data": monthly_apps},
+            {"label": "Placements",   "data": monthly_placed},
+        ],
+    }
+
+    # ── 3. Top skills in demand (from approved drives) ────────────────────────
+    drives = PlacementDrive.query.filter_by(status=DriveStatus.APPROVED).all()
+    skill_count = {}
+    for d in drives:
+        if d.skills_required:
+            for sk in d.skills_required.split(","):
+                sk = sk.strip().lower()
+                if sk:
+                    skill_count[sk] = skill_count.get(sk, 0) + 1
+
+    top_skills = sorted(skill_count.items(), key=lambda x: -x[1])[:10]
+    skills_chart = {
+        "labels": [s[0].title() for s in top_skills],
+        "data":   [s[1]         for s in top_skills],
+    }
+
+    # ── 4. Placement rate by department ──────────────────────────────────────
+    dept_stats = {}
+    students = Student.query.all()
+    for s in students:
+        dept = s.department or "Other"
+        if dept not in dept_stats:
+            dept_stats[dept] = {"total": 0, "placed": 0}
+        dept_stats[dept]["total"] += 1
+        if s.placements:
+            dept_stats[dept]["placed"] += 1
+
+    dept_items = sorted(dept_stats.items(), key=lambda x: -x[1]["total"])[:8]
+    dept_chart = {
+        "labels": [d[0] for d in dept_items],
+        "total":  [d[1]["total"]  for d in dept_items],
+        "placed": [d[1]["placed"] for d in dept_items],
+    }
+
+    # ── 5. Top companies by placements ───────────────────────────────────────
+    company_placements = {}
+    for p in Placement.query.all():
+        name = p.company.name if p.company else "Unknown"
+        company_placements[name] = company_placements.get(name, 0) + 1
+
+    top_companies = sorted(company_placements.items(), key=lambda x: -x[1])[:8]
+    companies_chart = {
+        "labels": [c[0] for c in top_companies],
+        "data":   [c[1] for c in top_companies],
+    }
+
+    # ── 6. Summary KPIs ──────────────────────────────────────────────────────
+    total_apps   = Application.query.count()
+    total_placed = Application.query.filter(
+        Application.status.in_([ApplicationStatus.SELECTED, "placed"])).count()
+
+    kpis = {
+        "total_students":   Student.query.count(),
+        "total_companies":  Company.query.filter_by(
+            approval_status="approved").count(),
+        "total_drives":     PlacementDrive.query.count(),
+        "total_applications": total_apps,
+        "total_placed":     total_placed,
+        "placement_rate":   round(total_placed / total_apps * 100, 1)
+                            if total_apps else 0,
+        "avg_salary":       round(
+            sum(p.salary for p in Placement.query.all() if p.salary) /
+            max(Placement.query.count(), 1), 2),
+    }
+
+    return jsonify({
+        "kpis":            kpis,
+        "funnel":          funnel,
+        "monthly_trend":   monthly_trend,
+        "skills_demand":   skills_chart,
+        "dept_placements": dept_chart,
+        "top_companies":   companies_chart,
+    }), 200
+
+
+# ── Public analytics (no auth — aggregated, no sensitive data) ────────────────
+
+@admin_bp.route("/analytics/public", methods=["GET"])
+@cached_response("public:analytics", ttl=TTL["long"])
+def public_analytics():
+    """
+    Read-only aggregated stats for the public landing page.
+    No PII, no company details, no student names.
+    """
+    from models.models import (PlacementDrive, Application, Student,
+                                Company, Placement, DriveStatus, ApplicationStatus)
+
+    total_apps   = Application.query.count()
+    total_placed = Application.query.filter(
+        Application.status.in_([ApplicationStatus.SELECTED, "placed"])).count()
+
+    return jsonify({
+        "total_students":   Student.query.count(),
+        "total_companies":  Company.query.filter_by(
+            approval_status="approved").count(),
+        "total_drives":     PlacementDrive.query.filter_by(
+            status=DriveStatus.APPROVED).count(),
+        "total_placed":     total_placed,
+        "placement_rate":   round(total_placed / total_apps * 100, 1)
+                            if total_apps else 0,
+        "avg_salary":       round(
+            sum(p.salary for p in Placement.query.all() if p.salary) /
+            max(Placement.query.count(), 1), 2),
+    }), 200

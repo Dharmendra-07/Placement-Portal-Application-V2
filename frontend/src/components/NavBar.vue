@@ -54,6 +54,11 @@
               <i class="bi bi-gear me-1"></i>Jobs
             </router-link>
           </li>
+          <li class="nav-item">
+            <router-link to="/admin/analytics" class="nav-link">
+              <i class="bi bi-graph-up me-1"></i>Analytics
+            </router-link>
+          </li>
         </ul>
 
         <!-- Company links -->
@@ -71,6 +76,11 @@
           <li class="nav-item">
             <router-link to="/company/placements" class="nav-link">
               <i class="bi bi-check-circle me-1"></i>Selected
+            </router-link>
+          </li>
+          <li class="nav-item">
+            <router-link to="/company/analytics" class="nav-link">
+              <i class="bi bi-graph-up me-1"></i>Analytics
             </router-link>
           </li>
         </ul>
@@ -105,6 +115,16 @@
           <li class="nav-item">
             <router-link to="/student/history" class="nav-link">
               <i class="bi bi-clock-history me-1"></i>History
+            </router-link>
+          </li>
+          <li class="nav-item">
+            <router-link to="/student/analytics" class="nav-link">
+              <i class="bi bi-graph-up me-1"></i>Analytics
+            </router-link>
+          </li>
+          <li class="nav-item">
+            <router-link to="/ats" class="nav-link">
+              <i class="bi bi-robot me-1"></i>ATS
             </router-link>
           </li>
           <li class="nav-item">
